@@ -1,0 +1,49 @@
+# =============================================================================
+# Fast-BEV deploy/inference dependencies (Python 3.8, torch 1.10.1+cu113)
+# Pins chosen to be mutually compatible with the old MMCV 1.4.0 / MMDet 2.14.0
+# stack required by this repo. Installed INSIDE the Docker image only.
+# torch / torchvision / mmcv-full are installed separately in the Dockerfile.
+# =============================================================================
+
+# --- numerical core (numpy<1.20 + numba 0.48 are hard repo requirements) ---
+numpy==1.19.5
+numba==0.48.0
+llvmlite==0.31.0
+scipy==1.5.4
+
+# --- OpenMMLab detection / segmentation (pure-python, no compiled ops) ---
+mmdet==2.14.0
+mmsegmentation==0.14.1
+
+# --- model backbone deps ---
+timm==0.6.13            # required by mmdet3d swin_transformer backbone
+
+# --- nuScenes / dataset tooling ---
+nuscenes-devkit==1.1.9
+shapely<2.0.0           # mmdet3d/nuscenes box ops break on shapely 2.x API
+lyft-dataset-sdk==0.0.8
+networkx>=2.2,<2.3
+plyfile
+scikit-image==0.19.3
+trimesh>=2.35.39,<2.35.40
+pandas==1.3.5
+
+# --- image / plotting (headless, no GUI inside the container) ---
+# NOTE: opencv is pinned/enforced separately at the end of the Dockerfile.
+# MMCV and nuscenes-devkit otherwise pull opencv>=4.7, whose cv2/typing stub
+# crashes on import (cv2.dnn.DictValue AttributeError).
+Pillow==8.4.0
+matplotlib==3.5.3
+
+# --- logging / misc ---
+tensorboard==2.11.2
+protobuf==3.20.3
+terminaltables
+pycocotools==2.0.4
+
+# --- imports required at module load time by tools/test.py ---
+ipython==7.34.0
+ipdb==0.13.13
+
+# --- formatting helper that mmcv.Config relies on (newer yapf breaks it) ---
+yapf==0.32.0

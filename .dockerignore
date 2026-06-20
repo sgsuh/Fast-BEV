@@ -1,0 +1,13 @@
+# The image only COPYs docker/entrypoint.sh and docker/requirements-deploy.txt;
+# the repo itself is bind-mounted at runtime. Keep the build context tiny so the
+# (potentially multi-GB) data/ and checkpoints aren't shipped to the daemon.
+.git
+data
+work_dirs
+pretrained_models
+**/*.pth
+**/*.pkl
+**/__pycache__
+**/*.so
+**/*.egg-info
+*.log

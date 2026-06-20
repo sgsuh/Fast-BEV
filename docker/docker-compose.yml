@@ -1,0 +1,32 @@
+# Fast-BEV deploy environment (RTX 4070 / Ada).
+#
+#   Build:   docker compose -f docker/docker-compose.yml build
+#   Shell:   docker compose -f docker/docker-compose.yml run --rm fastbev
+#   GPU chk: docker compose -f docker/docker-compose.yml run --rm fastbev \
+#              python -c "import torch; print(torch.cuda.get_device_name(0))"
+#
+# The whole repo is bind-mounted at /workspace, so code/configs/checkpoints edited
+# on the host are visible inside the container immediately. The mmdet3d CUDA ops
+# are compiled into the mounted tree on first run (see entrypoint.sh).
+services:
+  fastbev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: fastbev-deploy:cu113
+    container_name: fastbev-deploy
+    # WSL2 + RTX 4070: expose all GPUs to the container.
+    gpus: all
+    # Larger shared memory for dataloader workers.
+    shm_size: "8gb"
+    ipc: host
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    environment:
+      - MMDET3D=/workspace
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    command: ["bash"]
