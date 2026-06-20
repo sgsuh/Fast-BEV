@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from os import path as osp
 import numpy as np
 from mmdet.datasets import DATASETS
 from .nuscenes_monocular_dataset import NuScenesMultiViewDataset
@@ -24,9 +25,23 @@ class NuScenesMultiView_Map_Dataset2(NuScenesMultiViewDataset):
                  **kwargs):
         super().__init__(**kwargs)
 
-        self.nusc = NuScenes(version='v1.0-trainval', dataroot=self.data_root, verbose=True)
+        # Auto-detect the nuScenes DB version present under data_root so this
+        # dataset works on v1.0-mini / v1.0-test, not only v1.0-trainval.
+        version = 'v1.0-trainval'
+        for v in ['v1.0-trainval', 'v1.0-mini', 'v1.0-test']:
+            if osp.exists(osp.join(self.data_root, v)):
+                version = v
+                break
+        self.nusc = NuScenes(version=version, dataroot=self.data_root, verbose=True)
         self.scene2map = get_scene2map(self.nusc)
-        self.maps = get_nusc_maps()
+        # Map expansion is only needed for BEV-seg GT; tolerate its absence so
+        # detection-only models can run without the map_expansion json files.
+        try:
+            self.maps = get_nusc_maps(self.data_root)
+        except Exception as e:
+            print('[NuScenesMultiView_Map_Dataset2] map expansion unavailable, '
+                  'BEV-seg GT disabled: {}'.format(e))
+            self.maps = {}
         # box 2d
         self.with_box2d = with_box2d
 

@@ -69,19 +69,55 @@ python tools/test.py \
     --eval bbox
 ```
 
-### ⚠️ Dataset preparation note
+### Generating the nuScenes-mini info files
 
-The config references the preprocessed annotation file
-`data/nuscenes/nuscenes_infos_val_4d_interval3_max60.pkl`.
-The repo currently contains only nuScenes **mini** and the generic
-`nuscenes_infos_*.pkl`; the `*_4d_interval3_max60.pkl` files are **not** present.
-To actually run data through the model you must either:
+The configs reference the temporal annotation file
+`data/nuscenes/nuscenes_infos_val_4d_interval3_max60.pkl`. For the full dataset
+these are downloadable, but for the **nuScenes-mini** dataset shipped here they
+must be generated. Run the two steps below **inside the container** (`data/nuscenes`
+must already contain the `v1.0-mini` split, `samples/`, `sweeps/` and `maps/`):
 
-- download those `.pkl` files from the `download` link in the main README and place
-  them under `data/nuscenes/`, or
-- generate the info files with `tools/create_data.py` inside the container.
+```bash
+docker compose -f docker/docker-compose.yml run --rm fastbev bash
+# --- inside the container shell ---
+export PYTHONPATH=/workspace
 
-The GPU environment and the model graph can be verified without any data via
+# Step 1 - base mini infos (nuscenes_infos_{train,val}.pkl)
+python -c "from tools.data_converter import nuscenes_converter as nc; \
+nc.create_nuscenes_infos('./data/nuscenes', 'nuscenes', version='v1.0-mini', max_sweeps=10)"
+
+# Step 2 - temporal '4d' infos (nuscenes_infos_{train,val}_4d_interval3_max60.pkl)
+python tools/data_converter/nuscenes_seq_converter_mini.py \
+    --root-path ./data/nuscenes/ --version v1.0-mini --sets train val
+```
+
+`nuscenes_seq_converter_mini.py` is a mini/general variant of the original
+`nuscenes_seq_converter.py` (which is hard-coded to the v1.0-test split). It is
+parametrized by `--version`, `--sets`, `--interval` and `--max-adj`.
+
+### Running inference / evaluation on mini
+
+```bash
+# inside the container shell
+python tools/test.py \
+    configs/fastbev/exp/paper/fastbev_m0_r18_s256x704_v200x200x4_c192_d2_f4.py \
+    work_dirs/fastbev/exp/paper/fastbev_m0_r18_s256x704_v200x200x4_c192_d2_f4/epoch_20.pth \
+    --eval bbox
+```
+
+This runs the trained m0 model over the 81 mini-val samples on the GPU and reports
+nuScenes detection metrics (mAP / NDS). Classes that barely appear in mini-val
+(trailer, construction_vehicle, barrier) score ~0 by construction — this is a
+property of the tiny mini split, not a bug.
+
+Two repo changes make this work on mini (both committed):
+- `mmdet3d/datasets/nuscenes_monocular_dataset_map_2.py` now auto-detects the
+  nuScenes DB version (mini/trainval/test) instead of hard-coding `v1.0-trainval`,
+  and tolerates a missing map-expansion (BEV-seg GT is only needed for seg models).
+- The m0 config uses the local `disk` file-client backend instead of the original
+  `petrel` (s3/ceph) backend.
+
+The GPU environment and the model graph can also be verified without any data via
 `python docker/verify_env.py`.
 
 ## Notes
