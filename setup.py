@@ -306,7 +306,22 @@ if __name__ == '__main__':
                 name='gather_points_ext',
                 module='mmdet3d.ops.gather_points',
                 sources=['src/gather_points.cpp'],
-                sources_cuda=['src/gather_points_cuda.cu'])
+                sources_cuda=['src/gather_points_cuda.cu']),
+            make_cuda_ext(
+                name='project_2d_to_3d_ext',
+                module='mmdet3d.ops.project_2d_to_3d',
+                sources=['src/project_2d_to_3d.cpp'],
+                sources_cuda=['src/project_2d_to_3d_cuda.cu']),
+            make_cuda_ext(
+                name='vt_builder_ext',
+                module='mmdet3d.ops.vt_builder',
+                sources=['src/vt_builder.cpp'],
+                sources_cuda=['src/view_transform.cu']),
+            make_cuda_ext(
+                name='emc_ext',
+                module='mmdet3d.ops.emc',
+                sources=['src/emc.cpp'],
+                sources_cuda=['src/emc_utils.cu'])
         ],
         cmdclass={'build_ext': BuildExtension},
         zip_safe=False)
