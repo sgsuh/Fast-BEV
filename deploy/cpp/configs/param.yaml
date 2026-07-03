@@ -1,0 +1,21 @@
+# Auto-generated for nuScenes-mini by tools/prep_cpp_nuscenes.py
+data_root: "/workspace/work_dirs/cpp_nuscenes/data"
+save_dir: "/workspace/work_dirs/cpp_nuscenes/bev"
+mean: [123.675, 116.28, 103.53]
+std: [58.395, 57.12, 57.375]
+model_height: 256
+model_width: 704
+img_channel: 3
+n_times: 1
+draw_boxes_indexes_bev: [[0, 1], [1, 2], [2, 3], [3, 0]]
+color_map: [[70, 130, 180], [0, 0, 230], [135, 206, 235], [100, 149, 237], [219, 112, 147], [255, 61, 99], [240, 128, 128], [138, 43, 226], [112, 128, 144], [210, 105, 30]]
+scale_factor: 4
+canvas_size: 900
+show_range: 50
+vis_thred: 0.3
+resize_size: [704, 396]
+crop_size: [0, 70, 704, 326]
+fold_name: ["CAM_FRONT", "CAM_FRONT_RIGHT", "CAM_FRONT_LEFT", "CAM_BACK", "CAM_BACK_LEFT", "CAM_BACK_RIGHT"]
+raw_height: 900
+raw_width: 1600
+num_cam: 6

@@ -1,0 +1,7 @@
+Onnx: /workspace/work_dirs/fastbev_m0_f4.onnx
+Engine: /workspace/work_dirs/fastbev_m0_f4_cpp.engine
+WorkspaceSize: 512
+BatchSize: 1
+Precision: FP16
+Calibration: /workspace/work_dirs/CalibrationTablefastbev
+InputNames: ["input_0", "input_1", "input_2"]

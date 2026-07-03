@@ -31,6 +31,29 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     command: ["bash"]
 
+  # Stage C: C++ TensorRT inference (deploy/cpp). Extends fastbev-trt with the C++
+  # toolchain + OpenCV/Eigen/yaml-cpp/Qhull. Build fastbev-trt first.
+  #   docker compose -f docker/docker-compose.yml build fastbev-cpp
+  #   docker compose -f docker/docker-compose.yml run --rm fastbev-cpp bash docker/build_cpp.sh
+  fastbev-cpp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.cpp
+    image: fastbev-deploy:cpp
+    container_name: fastbev-deploy-cpp
+    gpus: all
+    shm_size: "8gb"
+    ipc: host
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    command: ["bash"]
+
   # Stage B: same env + TensorRT 8.6.1 / cuDNN 8.9 for the custom TRT plugins.
   #   Build: docker compose -f docker/docker-compose.yml build fastbev-trt
   #          (depends on the fastbev image above; build that first)
