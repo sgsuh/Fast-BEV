@@ -30,3 +30,26 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     command: ["bash"]
+
+  # Stage B: same env + TensorRT 8.6.1 / cuDNN 8.9 for the custom TRT plugins.
+  #   Build: docker compose -f docker/docker-compose.yml build fastbev-trt
+  #          (depends on the fastbev image above; build that first)
+  fastbev-trt:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.trt
+    image: fastbev-deploy:trt
+    container_name: fastbev-deploy-trt
+    gpus: all
+    shm_size: "8gb"
+    ipc: host
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    environment:
+      - MMDET3D=/workspace
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    command: ["bash"]

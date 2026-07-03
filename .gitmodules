@@ -1,0 +1,4 @@
+[submodule "third_party/mmdeploy"]
+	path = third_party/mmdeploy
+	url = https://github.com/sgsuh/mmdeploy.git
+	branch = feature/fast-bev

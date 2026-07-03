@@ -1,0 +1,67 @@
+# =============================================================================
+# Fast-BEV deploy environment + TensorRT (Stage B)
+#
+# Extends the verified working image (fastbev-deploy:cu113, torch 1.10.1+cu113,
+# MMCV 1.4.0, sm_89 via PTX) with the pieces needed to build and run the custom
+# TensorRT plugins (project_2d_to_3d / emc) shipped in third_party/mmdeploy.
+#
+# TensorRT 8.6.1 is the first line with official Ada (sm_89) support that still
+# has a CUDA 11.x build, so it coexists with the cu113 torch stack. cuDNN is
+# bumped to the 8.9 that TRT 8.6 expects (cuDNN is backward compatible, so the
+# MMCV/mmdet3d ops built against the older cuDNN keep working).
+#
+# We only need the C++ headers + libs to build libmmdeploy_tensorrt_ops.so and
+# load it at runtime via ctypes -- the mmdeploy *python* package (mmcv 2.x /
+# mmengine) is intentionally NOT installed; it would collide with mmcv 1.4.0.
+# =============================================================================
+FROM fastbev-deploy:cu113
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# The cu11.3.1 base predates NVIDIA's 2022 apt GPG key rotation, so refresh the
+# repo definition + key before touching the CUDA repo, otherwise apt-get update
+# fails with NO_PUBKEY on developer.download.nvidia.com.
+RUN rm -f /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list \
+    && apt-key del 7fa2af80 2>/dev/null || true \
+    && wget -qO /tmp/cuda-keyring.deb \
+        https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb \
+    && dpkg -i /tmp/cuda-keyring.deb \
+    && rm -f /tmp/cuda-keyring.deb
+
+# TensorRT 8.6.1 + cuDNN 8.9, both pinned to the +cuda11.8 variant (resolved
+# dynamically so a repo patch bump doesn't break the exact-version pin). cmake
+# is needed to drive the plugin build.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends cmake \
+    && TRT_VER="$(apt-cache madison libnvinfer8 | grep '8\.6\.1.*+cuda11\.8' | head -1 | awk '{print $3}')" \
+    && CUDNN_VER="$(apt-cache madison libcudnn8 | grep '8\.9.*+cuda11\.8' | head -1 | awk '{print $3}')" \
+    && echo "Installing TensorRT=${TRT_VER}  cuDNN=${CUDNN_VER}" \
+    && test -n "${TRT_VER}" && test -n "${CUDNN_VER}" \
+    && apt-get install -y --no-install-recommends --allow-change-held-packages \
+        libcudnn8=${CUDNN_VER} libcudnn8-dev=${CUDNN_VER} \
+        libnvinfer-headers-dev=${TRT_VER} libnvinfer-headers-plugin-dev=${TRT_VER} \
+        libnvinfer8=${TRT_VER} libnvinfer-dev=${TRT_VER} \
+        libnvinfer-plugin8=${TRT_VER} libnvinfer-plugin-dev=${TRT_VER} \
+        libnvonnxparsers8=${TRT_VER} libnvonnxparsers-dev=${TRT_VER} \
+        libnvparsers8=${TRT_VER} libnvparsers-dev=${TRT_VER} \
+    && apt-mark hold libcudnn8 libnvinfer8 libnvinfer-plugin8 libnvonnxparsers8 libnvparsers8 \
+        libnvinfer-headers-dev libnvinfer-headers-plugin-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python-side TensorRT bindings (runtime engine build/inference from our tools).
+# Matches the C++ TRT 8.6.1 above; no headers, so it does not affect the build.
+# cmake>=3.18 (pip) is required so CMAKE_CUDA_ARCHITECTURES "86-real;86-virtual"
+# emits compute_86 PTX (Ada/sm_89 JIT); the apt cmake 3.16 predates that and
+# would instead drop all gencode -> "no kernel image" on the 4070. pip's cmake
+# lands in /usr/local/bin (ahead of /usr/bin on PATH), so it wins.
+RUN pip install --no-cache-dir tensorrt==8.6.1 pycuda==2022.1 "cmake>=3.22,<3.28" \
+        onnx==1.12.0 protobuf==3.19.6
+
+# Headers land in /usr/include/x86_64-linux-gnu, libs in /usr/lib/... (both on
+# the default cmake/ld search paths). Expose /usr as the *_DIR anchor anyway.
+ENV TENSORRT_DIR=/usr \
+    CUDNN_DIR=/usr
+
+WORKDIR /workspace
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]
